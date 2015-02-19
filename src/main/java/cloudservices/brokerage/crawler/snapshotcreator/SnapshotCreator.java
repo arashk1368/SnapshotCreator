@@ -278,10 +278,13 @@ public class SnapshotCreator {
         switch (type) {
             case REST:
                 sb.append("html");
+                break;
             case WADL:
                 sb.append("wadl");
+                break;
             case WSDL:
                 sb.append("wsdl");
+                break;
         }
         return sb.toString();
     }
