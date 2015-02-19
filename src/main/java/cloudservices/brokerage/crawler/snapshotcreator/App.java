@@ -75,8 +75,8 @@ public class App {
             LOGGER.log(Level.SEVERE, "Already in Snapshots : {0}", creator.getSame());
             LOGGER.log(Level.SEVERE, "Saved Snapshots : {0}", creator.getSavedSnapshots());
             LOGGER.log(Level.SEVERE, "Undefined Providers : {0}", creator.getUndefinedProviders());
-            System.exit(0);
         }
+        System.exit(0);
     }
 
     private static boolean createLogFile() {
