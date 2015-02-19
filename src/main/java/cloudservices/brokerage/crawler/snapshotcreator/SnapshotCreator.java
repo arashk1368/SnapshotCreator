@@ -65,112 +65,115 @@ public class SnapshotCreator {
 
         for (ServiceDescription description : descriptions) {
             LOGGER.log(Level.INFO, "Description Id : {0}", description.getId());
-            ServiceDescriptionSnapshot last = snapshotDAO.getLast(description, type);
-            InputStream stream = getSnapshot(description.getUrl());
-            // maybe other parts takes time
-            Date now = new Date();
+            try {
+                ServiceDescriptionSnapshot last = snapshotDAO.getLast(description, type);
+                InputStream stream = getSnapshot(description.getUrl());
+                // maybe other parts takes time
+                Date now = new Date();
 
-            if (stream != null) {
-                LOGGER.log(Level.FINER, "Received the response");
-                byte[] content = getContent(stream);
+                if (stream != null) {
+                    LOGGER.log(Level.FINER, "Received the response");
+                    byte[] content = getContent(stream);
 
-                if (validate(content, type)) {
-                    description.setAvailable(true);
-                    description.setLastAvailableTime(now);
-                    descriptionDAO.saveOrUpdate(description);
+                    if (validate(content, type)) {
+                        description.setAvailable(true);
+                        description.setLastAvailableTime(now);
+                        descriptionDAO.saveOrUpdate(description);
 
-                    boolean flag = true;
-                    if (last != null) {
-                        LOGGER.log(Level.FINER, "There is already a snap with address : {0} and ID: {1}", new Object[]{last.getFileAddress(), last.getId()});
-                        if (last.getFileAddress() != null) {
-                            String plainFileAddress = withoutCtxReposAddress.concat(last.getFileAddress());
-                            if (FileChecker.compare(new ByteArrayInputStream(content), new FileInputStream(plainFileAddress))) {
-                                last.setAccessedTime(now);
-                                providerDAO.saveOrUpdate(last);
-                                LOGGER.log(Level.INFO, "The previous snapshot has the same content");
-                                flag = false;
-                                same++;
+                        boolean flag = true;
+                        if (last != null) {
+                            LOGGER.log(Level.FINER, "There is already a snap with address : {0} and ID: {1}", new Object[]{last.getFileAddress(), last.getId()});
+                            if (last.getFileAddress() != null) {
+                                String plainFileAddress = withoutCtxReposAddress.concat(last.getFileAddress());
+                                if (FileChecker.compare(new ByteArrayInputStream(content), new FileInputStream(plainFileAddress))) {
+                                    last.setAccessedTime(now);
+                                    providerDAO.saveOrUpdate(last);
+                                    LOGGER.log(Level.INFO, "The previous snapshot has the same content");
+                                    flag = false;
+                                    same++;
+                                } else {
+                                    LOGGER.log(Level.INFO, "The previous snapshot has different content");
+                                }
                             } else {
-                                LOGGER.log(Level.INFO, "The previous snapshot has different content");
+                                LOGGER.log(Level.SEVERE, "The Snapshot with ID has a null address : {0}", last.getId());
                             }
-                        } else {
-                            LOGGER.log(Level.SEVERE, "The Snapshot with ID has a null address : {0}", last.getId());
                         }
-                    }
-                    if (flag) { // indb = null or indb!=new
+                        if (flag) { // indb = null or indb!=new
 
-                        ServiceDescriptionSnapshot snapshot = new ServiceDescriptionSnapshot();
-                        snapshot.setAccessedTime(now);
-                        snapshot.setIsProcessed(false);
-                        snapshot.setServiceDescription(description);
-                        snapshot.setType(type);
-                        Long snapshotId = (Long) snapshotDAO.save(snapshot);
-                        LOGGER.log(Level.FINE, "New snapshot with ID : {0} saved", snapshotId);
-                        snapshot.setId(snapshotId);
+                            ServiceDescriptionSnapshot snapshot = new ServiceDescriptionSnapshot();
+                            snapshot.setAccessedTime(now);
+                            snapshot.setIsProcessed(false);
+                            snapshot.setServiceDescription(description);
+                            snapshot.setType(type);
+                            Long snapshotId = (Long) snapshotDAO.save(snapshot);
+                            LOGGER.log(Level.FINE, "New snapshot with ID : {0} saved", snapshotId);
+                            snapshot.setId(snapshotId);
 
-                        String providerName = "Undefined";
-                        if (description.getServiceProvider() != null) {
-                            ServiceProvider provider = (ServiceProvider) providerDAO.load(ServiceProvider.class, description.getServiceProvider().getId());
-                            if (!provider.getName().isEmpty()) {
-                                providerName = provider.getName();
+                            String providerName = "Undefined";
+                            if (description.getServiceProvider() != null) {
+                                ServiceProvider provider = (ServiceProvider) providerDAO.load(ServiceProvider.class, description.getServiceProvider().getId());
+                                if (!provider.getName().isEmpty()) {
+                                    providerName = provider.getName();
+                                } else {
+                                    LOGGER.log(Level.SEVERE, "Service Provider with ID : {0} does not have name", provider.getId());
+                                    undefinedProviders++;
+                                }
                             } else {
-                                LOGGER.log(Level.SEVERE, "Service Provider with ID : {0} does not have name", provider.getId());
+                                LOGGER.log(Level.SEVERE, "Service Description with ID : {0} does not have provider", description.getId());
                                 undefinedProviders++;
                             }
-                        } else {
-                            LOGGER.log(Level.SEVERE, "Service Description with ID : {0} does not have provider", description.getId());
-                            undefinedProviders++;
+
+                            LOGGER.log(Level.FINE, "Provider name is used : {0}", providerName);
+                            String snapDirAddress = getSnapDirAddress(providerName);
+                            LOGGER.log(Level.INFO, "Snap Directory address : {0}", snapDirAddress);
+                            String ctxDir = withCtxReposAddress.concat(snapDirAddress);
+                            String plainDir = withoutCtxReposAddress.concat(snapDirAddress);
+                            DirectoryUtil.createDirs(ctxDir);
+                            DirectoryUtil.createDirs(plainDir);
+                            LOGGER.log(Level.FINER, "Directories created in {0} and in {1}", new Object[]{ctxDir, plainDir});
+
+                            String fileName = getSnapFileName(type, snapshotId);
+                            LOGGER.log(Level.INFO, "File name : {0}", fileName);
+
+                            String ctxFileAddress = ctxDir.concat(fileName);
+                            String plainFileAddress = plainDir.concat(fileName);
+
+                            String ctx = getContext(description, providerName);
+                            LOGGER.log(Level.INFO, "Contex : {0}", ctx);
+
+                            InputStream temp = new ByteArrayInputStream(content);
+
+                            FileWriter.writeInputStream(temp, new File(ctxFileAddress), ctx);
+                            LOGGER.log(Level.INFO, "With context created successfully in {0}", ctxFileAddress);
+
+                            InputStream temp2 = new ByteArrayInputStream(content);
+
+                            FileWriter.writeInputStream(temp2, new File(plainFileAddress));
+                            LOGGER.log(Level.INFO, "Without context created successfully in {0}", plainFileAddress);
+
+                            snapshot.setFileAddress(snapDirAddress.concat(fileName));
+                            snapshotDAO.saveOrUpdate(snapshot);
+                            savedSnapshots++;
                         }
-
-                        LOGGER.log(Level.FINE, "Provider name is used : {0}", providerName);
-                        String snapDirAddress = getSnapDirAddress(providerName);
-                        LOGGER.log(Level.INFO, "Snap Directory address : {0}", snapDirAddress);
-                        String ctxDir = withCtxReposAddress.concat(snapDirAddress);
-                        String plainDir = withoutCtxReposAddress.concat(snapDirAddress);
-                        DirectoryUtil.createDirs(ctxDir);
-                        DirectoryUtil.createDirs(plainDir);
-                        LOGGER.log(Level.FINER, "Directories created in {0} and in {1}", new Object[]{ctxDir, plainDir});
-
-                        String fileName = getSnapFileName(type, snapshotId);
-                        LOGGER.log(Level.INFO, "File name : {0}", fileName);
-
-                        String ctxFileAddress = ctxDir.concat(fileName);
-                        String plainFileAddress = plainDir.concat(fileName);
-
-                        String ctx = getContext(description, providerName);
-                        LOGGER.log(Level.INFO, "Contex : {0}", ctx);
-
-                        InputStream temp = new ByteArrayInputStream(content);
-
-                        FileWriter.writeInputStream(temp, new File(ctxFileAddress), ctx);
-                        LOGGER.log(Level.INFO, "With context created successfully in {0}", ctxFileAddress);
-
-                        InputStream temp2 = new ByteArrayInputStream(content);
-
-                        FileWriter.writeInputStream(temp2, new File(plainFileAddress));
-                        LOGGER.log(Level.INFO, "Without context created successfully in {0}", plainFileAddress);
-
-                        snapshot.setFileAddress(snapDirAddress.concat(fileName));
-                        snapshotDAO.saveOrUpdate(snapshot);
-                        savedSnapshots++;
+                    } else {
+                        LOGGER.log(Level.INFO, "Response from URL : {0} is not valid", description.getUrl());
+                        notValidReponse++;
+                        description.setAvailable(false);
+                        description.setLastUnavailableTime(now);
+                        descriptionDAO.saveOrUpdate(description);
                     }
                 } else {
-                    LOGGER.log(Level.INFO, "Response from URL : {0} is not valid", description.getUrl());
-                    notValidReponse++;
+                    LOGGER.log(Level.INFO, "Cannot receive from URL : {0}", description.getUrl());
+                    noResponse++;
                     description.setAvailable(false);
                     description.setLastUnavailableTime(now);
                     descriptionDAO.saveOrUpdate(description);
                 }
-            } else {
-                LOGGER.log(Level.INFO, "Cannot receive from URL : {0}", description.getUrl());
-                noResponse++;
-                description.setAvailable(false);
-                description.setLastUnavailableTime(now);
-                descriptionDAO.saveOrUpdate(description);
+                this.delay();
+            } catch (Exception ex) {
+                LOGGER.log(Level.SEVERE, "UNKNOWN ERROR!!! : " + ex.getMessage(), ex);
             }
-            this.delay();
         }
-
         LOGGER.log(Level.INFO, "Snapping ended for strategy : {0} and type : {1}", new Object[]{strategy, type});
     }
 

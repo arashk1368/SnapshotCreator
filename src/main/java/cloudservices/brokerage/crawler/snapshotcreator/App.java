@@ -45,7 +45,7 @@ public class App {
 //        "Mozilla/5.0 (Windows NT 6.0; rv:14.0) Gecko/20100101 Firefox/14.0.1",
 //        "Mozilla/5.0 (X11; Mageia; Linux x86_64; rv:10.0.9) Gecko/20100101 Firefox/10.0.9"
     };
-    private final static long POLITENESS_DELAY = 1000; //ms
+    private final static long POLITENESS_DELAY = 100; //ms
     private final static String WSDL_CTX_ADDRESS = "SnapshotRepository/WithContext/WSDLS/";
     private final static String WSDL_PLAIN_ADDRESS = "SnapshotRepository/WithoutContext/WSDLS/";
 
@@ -91,7 +91,7 @@ public class App {
             sb.append(dateFormat.format(cal.getTime()));
             String filename = sb.toString();
             DirectoryUtil.createDir("logs");
-            LoggerSetup.setup("logs/" + filename + ".txt", "logs/" + filename + ".html", Level.FINER);
+            LoggerSetup.setup("logs/" + filename + ".txt", "logs/" + filename + ".html", Level.INFO);
             return true;
         } catch (IOException ex) {
             LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
