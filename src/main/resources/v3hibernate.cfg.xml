@@ -12,5 +12,6 @@
         <mapping class="cloudservices.brokerage.crawler.crawlingcommons.model.entities.v3.ServiceDescription"/>
         <mapping class="cloudservices.brokerage.crawler.crawlingcommons.model.entities.v3.ServiceDescriptionSnapshot"/>
         <mapping class="cloudservices.brokerage.crawler.crawlingcommons.model.entities.v3.ServiceProvider"/>
+        <mapping class="cloudservices.brokerage.crawler.crawlingcommons.model.entities.v3.Category"/>
     </session-factory>
 </hibernate-configuration>
