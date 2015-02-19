@@ -5,18 +5,11 @@
 package cloudservices.brokerage.crawler.snapshotcreator;
 
 import cloudservices.brokerage.commons.utils.file_utils.DirectoryUtil;
-import cloudservices.brokerage.commons.utils.file_utils.FileWriter;
 import cloudservices.brokerage.commons.utils.logging.LoggerSetup;
-import cloudservices.brokerage.commons.utils.url_utils.URLRequester;
-import cloudservices.brokerage.commons.utils.validators.WSDLValidator;
 import cloudservices.brokerage.crawler.crawlingcommons.model.DAO.BaseDAO;
 import cloudservices.brokerage.crawler.crawlingcommons.model.DAO.DAOException;
 import cloudservices.brokerage.crawler.crawlingcommons.model.enums.v3.ServiceDescriptionType;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -48,7 +41,10 @@ public class App {
     private final static long POLITENESS_DELAY = 100; //ms
     private final static String WSDL_CTX_ADDRESS = "SnapshotRepository/WithContext/WSDLS/";
     private final static String WSDL_PLAIN_ADDRESS = "SnapshotRepository/WithoutContext/WSDLS/";
-
+    private final static long STARTING_SNAPSHOT_ID = 100000;
+    private final static long STARTING_SERVICE_ID = 0;
+    private final static long ENDING_SERVICE_ID = 170;
+    
     public static void main(String[] args) {
         createLogFile();
         //        createNewDB();
@@ -65,7 +61,7 @@ public class App {
         SnapshotCreator creator = new SnapshotCreator(USER_AGENTS, POLITENESS_DELAY);
 
         try {
-            creator.CreateSnapshots(ServiceDescriptionType.WSDL, SnapshotStrategy.NEW, WSDL_CTX_ADDRESS, WSDL_PLAIN_ADDRESS);
+            creator.CreateSnapshots(ServiceDescriptionType.WSDL, SnapshotStrategy.NEW, WSDL_CTX_ADDRESS, WSDL_PLAIN_ADDRESS,STARTING_SNAPSHOT_ID,STARTING_SERVICE_ID,ENDING_SERVICE_ID);
         } catch (DAOException | IOException | XMLStreamException ex) {
             LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
         } finally {

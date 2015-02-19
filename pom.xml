@@ -82,7 +82,7 @@
         <dependency>
             <groupId>cloudservices.brokerage.crawler</groupId>
             <artifactId>CrawlingCommons</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>1.5-SNAPSHOT</version>
             <type>jar</type>
         </dependency>
     </dependencies>

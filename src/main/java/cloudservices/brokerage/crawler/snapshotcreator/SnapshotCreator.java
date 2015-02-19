@@ -57,16 +57,22 @@ public class SnapshotCreator {
         this.snapshotDAO = new ServiceDescriptionSnapshotDAO();
     }
 
-    public void CreateSnapshots(ServiceDescriptionType type, SnapshotStrategy strategy, String withCtxReposAddress, String withoutCtxReposAddress) throws DAOException, IOException, XMLStreamException {
+    public void CreateSnapshots(ServiceDescriptionType type, SnapshotStrategy strategy, String withCtxReposAddress, String withoutCtxReposAddress, long startingSnapshotId, long startingServiceId, long endingServiceId) throws DAOException, IOException, XMLStreamException {
         LOGGER.log(Level.INFO, "Snapping started for strategy : {0} and type : {1}", new Object[]{strategy, type});
-        List<ServiceDescription> descriptions = this.getDescriptions(type, strategy);
+        LOGGER.log(Level.INFO, "Snapping started from Id : {0} to Id : {1}", new Object[]{startingServiceId, endingServiceId});
+        LOGGER.log(Level.INFO, "Starting saving snapshots from Id : {0}", startingSnapshotId);
+        List<ServiceDescription> descriptions = this.getDescriptions(type, strategy, startingServiceId, endingServiceId);
         LOGGER.log(Level.INFO, "{0} Descriptions found for snapping", descriptions.size());
         totalDescNum = descriptions.size();
+        Long snapshotId = startingSnapshotId;
 
         for (ServiceDescription description : descriptions) {
             LOGGER.log(Level.INFO, "Description Id : {0}", description.getId());
             try {
-                ServiceDescriptionSnapshot last = snapshotDAO.getLast(description, type);
+                ServiceDescriptionSnapshot last = null;
+                if (strategy != SnapshotStrategy.NEVER_SNAPPED && strategy != SnapshotStrategy.NEW) {
+                    last = snapshotDAO.getLast(description, type);
+                }
                 InputStream stream = getSnapshot(description.getUrl());
                 // maybe other parts takes time
                 Date now = new Date();
@@ -87,7 +93,7 @@ public class SnapshotCreator {
                                 String plainFileAddress = withoutCtxReposAddress.concat(last.getFileAddress());
                                 if (FileChecker.compare(new ByteArrayInputStream(content), new FileInputStream(plainFileAddress))) {
                                     last.setAccessedTime(now);
-                                    providerDAO.saveOrUpdate(last);
+                                    snapshotDAO.saveOrUpdate(last);
                                     LOGGER.log(Level.INFO, "The previous snapshot has the same content");
                                     flag = false;
                                     same++;
@@ -105,8 +111,10 @@ public class SnapshotCreator {
                             snapshot.setIsProcessed(false);
                             snapshot.setServiceDescription(description);
                             snapshot.setType(type);
-                            Long snapshotId = (Long) snapshotDAO.save(snapshot);
-                            LOGGER.log(Level.FINE, "New snapshot with ID : {0} saved", snapshotId);
+                            if (startingSnapshotId == -1) {
+                                snapshotId = (Long) snapshotDAO.save(snapshot);
+                                LOGGER.log(Level.INFO, "New snapshot with ID : {0} saved", snapshotId);
+                            }
                             snapshot.setId(snapshotId);
 
                             String providerName = "Undefined";
@@ -125,7 +133,7 @@ public class SnapshotCreator {
 
                             LOGGER.log(Level.FINE, "Provider name is used : {0}", providerName);
                             String snapDirAddress = getSnapDirAddress(providerName);
-                            LOGGER.log(Level.INFO, "Snap Directory address : {0}", snapDirAddress);
+                            LOGGER.log(Level.FINE, "Snap Directory address : {0}", snapDirAddress);
                             String ctxDir = withCtxReposAddress.concat(snapDirAddress);
                             String plainDir = withoutCtxReposAddress.concat(snapDirAddress);
                             DirectoryUtil.createDirs(ctxDir);
@@ -133,13 +141,13 @@ public class SnapshotCreator {
                             LOGGER.log(Level.FINER, "Directories created in {0} and in {1}", new Object[]{ctxDir, plainDir});
 
                             String fileName = getSnapFileName(type, snapshotId);
-                            LOGGER.log(Level.INFO, "File name : {0}", fileName);
+                            LOGGER.log(Level.FINE, "File name : {0}", fileName);
 
                             String ctxFileAddress = ctxDir.concat(fileName);
                             String plainFileAddress = plainDir.concat(fileName);
 
                             String ctx = getContext(description, providerName);
-                            LOGGER.log(Level.INFO, "Contex : {0}", ctx);
+                            LOGGER.log(Level.FINER, "Contex : {0}", ctx);
 
                             InputStream temp = new ByteArrayInputStream(content);
 
@@ -152,8 +160,18 @@ public class SnapshotCreator {
                             LOGGER.log(Level.INFO, "Without context created successfully in {0}", plainFileAddress);
 
                             snapshot.setFileAddress(snapDirAddress.concat(fileName));
-                            snapshotDAO.saveOrUpdate(snapshot);
+                            if (startingSnapshotId == -1) {
+                                snapshotDAO.saveOrUpdate(snapshot);
+                            } else {
+                                Long savedId = (Long) snapshotDAO.save(snapshot);
+                                LOGGER.log(Level.INFO, "New snapshot with ID : {0} saved", savedId);
+                                if ((long) savedId != (long) snapshotId) {
+                                    LOGGER.log(Level.SEVERE, "SAVED ID : {0}  AND SNAPSHOT ID : {1} ARE DIFFERENT", new Object[]{savedId, snapshotId});
+                                    System.exit(-1);
+                                }
+                            }
                             savedSnapshots++;
+                            snapshotId++;
                         }
                     } else {
                         LOGGER.log(Level.INFO, "Response from URL : {0} is not valid", description.getUrl());
@@ -177,18 +195,18 @@ public class SnapshotCreator {
         LOGGER.log(Level.INFO, "Snapping ended for strategy : {0} and type : {1}", new Object[]{strategy, type});
     }
 
-    private List<ServiceDescription> getDescriptions(ServiceDescriptionType type, SnapshotStrategy strategy) throws DAOException {
+    private List<ServiceDescription> getDescriptions(ServiceDescriptionType type, SnapshotStrategy strategy, long startingServiceId, long endingServiceId) throws DAOException {
         switch (strategy) {
             case ALL:
-                return descriptionDAO.getAllWithType(type);
+                return descriptionDAO.getAllWithType(type, startingServiceId, endingServiceId);
             case NEW:
-                return descriptionDAO.getBothTimesNull(type);
+                return descriptionDAO.getBothTimesNull(type, startingServiceId, endingServiceId);
             case NEVER_SNAPPED:
-                return descriptionDAO.getNeverAvailable(type);
+                return descriptionDAO.getNeverAvailable(type, startingServiceId, endingServiceId);
             case UNAVAILABLE:
-                return descriptionDAO.getUnavailable(type);
+                return descriptionDAO.getUnavailable(type, startingServiceId, endingServiceId);
             case UPDATED:
-                return descriptionDAO.getUpdated(type);
+                return descriptionDAO.getUpdated(type, startingServiceId, endingServiceId);
         }
         return new ArrayList<>();
     }
@@ -214,7 +232,7 @@ public class SnapshotCreator {
             try {
                 return URLRequester.getInputStreamFromURL(url, userAgent);
             } catch (Exception ex) {
-                LOGGER.log(Level.FINE, "Cannot receive from URL : " + url, ex);
+                LOGGER.log(Level.FINE, "Cannot receive from URL : " + url + " with user agent " + userAgent, ex);
 //                this.delay();
             }
         }
@@ -308,5 +326,4 @@ public class SnapshotCreator {
     public int getUndefinedProviders() {
         return undefinedProviders;
     }
-
 }
