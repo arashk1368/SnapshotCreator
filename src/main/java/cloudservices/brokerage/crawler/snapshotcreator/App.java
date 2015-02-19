@@ -45,6 +45,8 @@ public class App {
     private final static long STARTING_SERVICE_ID = 0;
     private final static long ENDING_SERVICE_ID = 170;
     
+    private final static ServiceDescriptionType DESCRIPTION_TYPE = ServiceDescriptionType.WSDL;
+
     public static void main(String[] args) {
         createLogFile();
         //        createNewDB();
@@ -61,7 +63,7 @@ public class App {
         SnapshotCreator creator = new SnapshotCreator(USER_AGENTS, POLITENESS_DELAY);
 
         try {
-            creator.CreateSnapshots(ServiceDescriptionType.WSDL, SnapshotStrategy.NEW, WSDL_CTX_ADDRESS, WSDL_PLAIN_ADDRESS,STARTING_SNAPSHOT_ID,STARTING_SERVICE_ID,ENDING_SERVICE_ID);
+            creator.CreateSnapshots(DESCRIPTION_TYPE, SnapshotStrategy.NEW, WSDL_CTX_ADDRESS, WSDL_PLAIN_ADDRESS, STARTING_SNAPSHOT_ID, STARTING_SERVICE_ID, ENDING_SERVICE_ID);
         } catch (DAOException | IOException | XMLStreamException ex) {
             LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
         } finally {
