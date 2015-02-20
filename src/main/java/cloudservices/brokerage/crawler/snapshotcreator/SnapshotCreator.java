@@ -8,6 +8,7 @@ import cloudservices.brokerage.commons.utils.file_utils.DirectoryUtil;
 import cloudservices.brokerage.commons.utils.file_utils.FileChecker;
 import cloudservices.brokerage.commons.utils.file_utils.FileWriter;
 import cloudservices.brokerage.commons.utils.url_utils.URLRequester;
+import cloudservices.brokerage.commons.utils.validators.WADLValidator;
 import cloudservices.brokerage.commons.utils.validators.WSDLValidator;
 import cloudservices.brokerage.crawler.crawlingcommons.model.DAO.DAOException;
 import cloudservices.brokerage.crawler.crawlingcommons.model.DAO.v3.ServiceDescriptionDAO;
@@ -250,12 +251,12 @@ public class SnapshotCreator {
         return baos.toByteArray();
     }
 
-    private boolean validate(byte[] content, ServiceDescriptionType type) throws XMLStreamException {
+    private boolean validate(byte[] content, ServiceDescriptionType type) throws XMLStreamException, Exception {
         switch (type) {
             case REST:
                 return true;
             case WADL:
-                return true; // SHOULD USE WADL VALIDATOR
+                return WADLValidator.validateXMLSchema(new ByteArrayInputStream(content));
             case WSDL:
                 return WSDLValidator.validateWSDL(content);
         }
