@@ -46,9 +46,39 @@ public class App {
     private final static ServiceDescriptionType DESCRIPTION_TYPE = ServiceDescriptionType.WADL;
     private final static SnapshotStrategy STRATEGY = SnapshotStrategy.NEW;
 
+    private final static long STARTING_SNAPSHOT_ID_XML = 0;
+    private final static long ENDING_SNAPSHOT_ID_XML = 1000000;
+    private final static ServiceDescriptionType DESCRIPTION_TYPE_XML = ServiceDescriptionType.WADL;
+    private final static XMLStrategy XML_STRATEGY = XMLStrategy.CONTEXT_CLASSIFIED;
+    private final static String XML_ADDRESS = "generated.xml";
+
     public static void main(String[] args) {
         createLogFile();
         //        createNewDB();
+
+//        createSnapshots();
+        createXML();
+
+        System.exit(0);
+    }
+
+    private static boolean createLogFile() {
+        try {
+            StringBuilder sb = new StringBuilder();
+            DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm");
+            Calendar cal = Calendar.getInstance();
+            sb.append(dateFormat.format(cal.getTime()));
+            String filename = sb.toString();
+            DirectoryUtil.createDir("logs");
+            LoggerSetup.setup("logs/" + filename + ".txt", "logs/" + filename + ".html", Level.INFO);
+            return true;
+        } catch (IOException ex) {
+            LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
+            return false;
+        }
+    }
+
+    private static void createSnapshots() {
         long startTime = System.currentTimeMillis();
         LOGGER.log(Level.SEVERE, "Snapping Start");
 
@@ -77,22 +107,29 @@ public class App {
             LOGGER.log(Level.SEVERE, "Saved Snapshots : {0}", creator.getSavedSnapshots());
             LOGGER.log(Level.SEVERE, "Undefined Providers : {0}", creator.getUndefinedProviders());
         }
-        System.exit(0);
     }
 
-    private static boolean createLogFile() {
+    private static void createXML() {
+        long startTime = System.currentTimeMillis();
+        LOGGER.log(Level.SEVERE, "Creating XML Start");
+
+        Configuration configuration = new Configuration();
+        configuration.configure("v3hibernate.cfg.xml");
+        BaseDAO.openSession(configuration);
+
+        XMLCreator xmlCreator = new XMLCreator();
+
         try {
-            StringBuilder sb = new StringBuilder();
-            DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm");
-            Calendar cal = Calendar.getInstance();
-            sb.append(dateFormat.format(cal.getTime()));
-            String filename = sb.toString();
-            DirectoryUtil.createDir("logs");
-            LoggerSetup.setup("logs/" + filename + ".txt", "logs/" + filename + ".html", Level.INFO);
-            return true;
-        } catch (IOException ex) {
+            xmlCreator.generate(STARTING_SNAPSHOT_ID_XML, ENDING_SNAPSHOT_ID_XML, DESCRIPTION_TYPE_XML, XML_ADDRESS, XML_STRATEGY);
+        } catch (DAOException | IOException ex) {
             LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
-            return false;
+        } finally {
+            BaseDAO.closeSession();
+            long endTime = System.currentTimeMillis();
+            long totalTime = endTime - startTime;
+            LOGGER.log(Level.SEVERE, "Creating XML End in {0}ms", totalTime);
+            LOGGER.log(Level.SEVERE, "Total Snapshots found : {0}", xmlCreator.getTotalNum());
+            LOGGER.log(Level.SEVERE, "Total Snapshots saved : {0}", xmlCreator.getSavedNum());
         }
     }
 }
