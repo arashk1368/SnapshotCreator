@@ -40,7 +40,7 @@ public class App {
     private final static long POLITENESS_DELAY = 100; //ms
     private final static String WSDL_CTX_ADDRESS = "SnapshotRepository/WithContext/WADLS/";
     private final static String WSDL_PLAIN_ADDRESS = "SnapshotRepository/WithoutContext/WADLS/";
-    private final static long STARTING_SNAPSHOT_ID = 300000;
+    private final static long STARTING_SNAPSHOT_ID = -1;
     private final static long STARTING_SERVICE_ID = 0;
     private final static long ENDING_SERVICE_ID = 100000;
     private final static ServiceDescriptionType DESCRIPTION_TYPE = ServiceDescriptionType.WADL;
@@ -57,7 +57,8 @@ public class App {
         //        createNewDB();
 
 //        createSnapshots();
-        createXML();
+//        createXML();
+        importSnapshots();
 
         System.exit(0);
     }
@@ -130,6 +131,32 @@ public class App {
             LOGGER.log(Level.SEVERE, "Creating XML End in {0}ms", totalTime);
             LOGGER.log(Level.SEVERE, "Total Snapshots found : {0}", xmlCreator.getTotalNum());
             LOGGER.log(Level.SEVERE, "Total Snapshots saved : {0}", xmlCreator.getSavedNum());
+        }
+    }
+
+    private static void importSnapshots() {
+        long startTime = System.currentTimeMillis();
+        LOGGER.log(Level.SEVERE, "Importing Snapshots Start");
+
+        Configuration configuration = new Configuration();
+        configuration.configure("v3hibernate.cfg.xml");
+        Configuration tempConfig = new Configuration();
+        tempConfig.configure("v3_temp_hibernate.cfg.xml");
+
+        SnapshotImporter importer = new SnapshotImporter();
+
+        try {
+            importer.Import(tempConfig, configuration, ServiceDescriptionType.WSDL, 0L, 1000000L);
+        } catch (Exception ex) {
+            LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
+        } finally {
+            long endTime = System.currentTimeMillis();
+            long totalTime = endTime - startTime;
+            LOGGER.log(Level.SEVERE, "Importing Snapshots End in {0}ms", totalTime);
+            LOGGER.log(Level.SEVERE, "Total Snapshots Found : {0}", importer.getTempSnapshotsNum());
+            LOGGER.log(Level.SEVERE, "Total Snapshots Saved : {0}", importer.getSavedSnapshotsNum());
+            LOGGER.log(Level.SEVERE,"Total Services Found: {0}",importer.getTempServicesNum());
+            LOGGER.log(Level.SEVERE,"Total Services Updated: {0}",importer.getUpdatedServicesNum());
         }
     }
 }
