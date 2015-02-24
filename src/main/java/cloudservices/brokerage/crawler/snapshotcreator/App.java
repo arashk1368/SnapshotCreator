@@ -38,8 +38,8 @@ public class App {
     //        "Mozilla/5.0 (X11; Mageia; Linux x86_64; rv:10.0.9) Gecko/20100101 Firefox/10.0.9"
     };
     private final static long POLITENESS_DELAY = 100; //ms
-    private final static String WSDL_CTX_ADDRESS = "SnapshotRepository/WithContext/WADLS/";
-    private final static String WSDL_PLAIN_ADDRESS = "SnapshotRepository/WithoutContext/WADLS/";
+    private final static String CTX_REPOS_ADDRESS = "SnapshotRepository/WithContext/WSDLS/";
+    private final static String PLAIN_REPOS_ADDRESS = "SnapshotRepository/WithoutContext/WSDLS/";
     private final static long STARTING_SNAPSHOT_ID = -1;
     private final static long STARTING_SERVICE_ID = 0;
     private final static long ENDING_SERVICE_ID = 100000;
@@ -48,8 +48,8 @@ public class App {
 
     private final static long STARTING_SNAPSHOT_ID_XML = 0;
     private final static long ENDING_SNAPSHOT_ID_XML = 1000000;
-    private final static ServiceDescriptionType DESCRIPTION_TYPE_XML = ServiceDescriptionType.WADL;
-    private final static XMLStrategy XML_STRATEGY = XMLStrategy.CONTEXT_CLASSIFIED;
+    private final static ServiceDescriptionType DESCRIPTION_TYPE_XML = ServiceDescriptionType.WSDL;
+    private final static XMLStrategy XML_STRATEGY = XMLStrategy.PLAIN_CLASSIFIED;
     private final static String XML_ADDRESS = "generated.xml";
 
     public static void main(String[] args) {
@@ -57,8 +57,8 @@ public class App {
         //        createNewDB();
 
 //        createSnapshots();
-//        createXML();
-        importSnapshots();
+        createXML();
+//        importSnapshots();
 
         System.exit(0);
     }
@@ -87,13 +87,13 @@ public class App {
         configuration.configure("v3hibernate.cfg.xml");
         BaseDAO.openSession(configuration);
 
-        DirectoryUtil.createDirs(WSDL_CTX_ADDRESS);
-        DirectoryUtil.createDirs(WSDL_PLAIN_ADDRESS);
+        DirectoryUtil.createDirs(CTX_REPOS_ADDRESS);
+        DirectoryUtil.createDirs(PLAIN_REPOS_ADDRESS);
 
         SnapshotCreator creator = new SnapshotCreator(USER_AGENTS, POLITENESS_DELAY);
 
         try {
-            creator.CreateSnapshots(DESCRIPTION_TYPE, STRATEGY, WSDL_CTX_ADDRESS, WSDL_PLAIN_ADDRESS, STARTING_SNAPSHOT_ID, STARTING_SERVICE_ID, ENDING_SERVICE_ID);
+            creator.CreateSnapshots(DESCRIPTION_TYPE, STRATEGY, CTX_REPOS_ADDRESS, PLAIN_REPOS_ADDRESS, STARTING_SNAPSHOT_ID, STARTING_SERVICE_ID, ENDING_SERVICE_ID);
         } catch (DAOException | IOException | XMLStreamException ex) {
             LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
         } finally {
@@ -121,7 +121,7 @@ public class App {
         XMLCreator xmlCreator = new XMLCreator();
 
         try {
-            xmlCreator.generate(STARTING_SNAPSHOT_ID_XML, ENDING_SNAPSHOT_ID_XML, DESCRIPTION_TYPE_XML, XML_ADDRESS, XML_STRATEGY);
+            xmlCreator.generate(STARTING_SNAPSHOT_ID_XML, ENDING_SNAPSHOT_ID_XML, DESCRIPTION_TYPE_XML, XML_ADDRESS, XML_STRATEGY, CTX_REPOS_ADDRESS, PLAIN_REPOS_ADDRESS);
         } catch (DAOException | IOException ex) {
             LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
         } finally {
@@ -131,6 +131,7 @@ public class App {
             LOGGER.log(Level.SEVERE, "Creating XML End in {0}ms", totalTime);
             LOGGER.log(Level.SEVERE, "Total Snapshots found : {0}", xmlCreator.getTotalNum());
             LOGGER.log(Level.SEVERE, "Total Snapshots saved : {0}", xmlCreator.getSavedNum());
+            LOGGER.log(Level.SEVERE, "Total Unvalid Snapshots : {0}", xmlCreator.getUnvalidNum());
         }
     }
 
@@ -155,8 +156,8 @@ public class App {
             LOGGER.log(Level.SEVERE, "Importing Snapshots End in {0}ms", totalTime);
             LOGGER.log(Level.SEVERE, "Total Snapshots Found : {0}", importer.getTempSnapshotsNum());
             LOGGER.log(Level.SEVERE, "Total Snapshots Saved : {0}", importer.getSavedSnapshotsNum());
-            LOGGER.log(Level.SEVERE,"Total Services Found: {0}",importer.getTempServicesNum());
-            LOGGER.log(Level.SEVERE,"Total Services Updated: {0}",importer.getUpdatedServicesNum());
+            LOGGER.log(Level.SEVERE, "Total Services Found: {0}", importer.getTempServicesNum());
+            LOGGER.log(Level.SEVERE, "Total Services Updated: {0}", importer.getUpdatedServicesNum());
         }
     }
 }

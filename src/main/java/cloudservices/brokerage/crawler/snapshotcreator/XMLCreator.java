@@ -27,12 +27,13 @@ public class XMLCreator {
     private final ServiceDescriptionSnapshotDAO snapshotDAO;
     private int totalNum;
     private int savedNum;
+    private int unvalidNum;
 
     public XMLCreator() {
         this.snapshotDAO = new ServiceDescriptionSnapshotDAO();
     }
 
-    public void generate(long startingId, long endingId, ServiceDescriptionType type, String xmlAddress, XMLStrategy strategy) throws DAOException, IOException {
+    public void generate(long startingId, long endingId, ServiceDescriptionType type, String xmlAddress, XMLStrategy strategy, String withCtxReposAddress, String withoutCtxReposAddress) throws DAOException, IOException {
         LOGGER.log(Level.INFO, "Creating XML between: {0} and {1} with Type : {2}", new Object[]{startingId, endingId, type});
         LOGGER.log(Level.INFO, "XML address: {0} and Strategy : {1}", new Object[]{xmlAddress, strategy});
 
@@ -51,10 +52,16 @@ public class XMLCreator {
 
         for (ServiceDescriptionSnapshot snapshot : snapshots) {
             LOGGER.log(Level.INFO, "Writing Snapshot with ID: {0}", snapshot.getId());
-            String fileElement = getXMLElement(snapshot, strategy);
-            LOGGER.log(Level.FINE, "Writing {0}", fileElement);
-            FileWriter.appendString(fileElement, xmlAddress);
-            savedNum++;
+            if (validateSnapshot(snapshot, withCtxReposAddress, withoutCtxReposAddress)) {
+
+                String fileElement = getXMLElement(snapshot, strategy);
+                LOGGER.log(Level.FINE, "Writing {0}", fileElement);
+                FileWriter.appendString(fileElement, xmlAddress);
+                savedNum++;
+            } else {
+                LOGGER.log(Level.SEVERE, "Snapshot is invalid!");
+                unvalidNum++;
+            }
         }
 
         FileWriter.appendString("</dataset>", xmlAddress);
@@ -107,6 +114,20 @@ public class XMLCreator {
         }
         return "";
     }
+    
+    private boolean validateSnapshot(ServiceDescriptionSnapshot snapshot, String withCtxReposAddress, String withoutCtxReposAddress) {
+        File withCtxFile = new File(withCtxReposAddress.concat(snapshot.getFileAddress()));
+        File plainFile = new File(withoutCtxReposAddress.concat(snapshot.getFileAddress()));
+        if (!withCtxFile.exists() || withCtxFile.isDirectory()) {
+            LOGGER.log(Level.SEVERE, "Snapshot with ID : {0} does not have with context at {1}", new Object[]{snapshot.getId(), withCtxFile.getPath()});
+            return false;
+        }
+        if (!plainFile.exists() || plainFile.isDirectory()) {
+            LOGGER.log(Level.SEVERE, "Snapshot with ID : {0} does not have without context at {1}", new Object[]{snapshot.getId(), plainFile.getPath()});
+            return false;
+        }
+        return true;
+    }
 
     public int getTotalNum() {
         return totalNum;
@@ -124,4 +145,11 @@ public class XMLCreator {
         this.savedNum = savedNum;
     }
 
+    public int getUnvalidNum() {
+        return unvalidNum;
+    }
+
+    public void setUnvalidNum(int unvalidNum) {
+        this.unvalidNum = unvalidNum;
+    }  
 }
