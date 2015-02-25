@@ -49,16 +49,19 @@ public class App {
     private final static long STARTING_SNAPSHOT_ID_XML = 0;
     private final static long ENDING_SNAPSHOT_ID_XML = 1000000;
     private final static ServiceDescriptionType DESCRIPTION_TYPE_XML = ServiceDescriptionType.WSDL;
-    private final static XMLStrategy XML_STRATEGY = XMLStrategy.PLAIN_CLASSIFIED;
-    private final static String XML_ADDRESS = "generated.xml";
+    private final static XMLStrategy XML_STRATEGY = XMLStrategy.CONTEXT_CLASSIFIED;
+    private final static String XML_ADDRESS = "train-WSDLS.xml";
+
+    private final static String HTML_REPOS_ADDRESS = "SnapshotRepository/WithContext/RESTS/";
 
     public static void main(String[] args) {
         createLogFile();
         //        createNewDB();
 
 //        createSnapshots();
-        createXML();
+//        createXML();
 //        importSnapshots();
+        removeNoise();
 
         System.exit(0);
     }
@@ -158,6 +161,24 @@ public class App {
             LOGGER.log(Level.SEVERE, "Total Snapshots Saved : {0}", importer.getSavedSnapshotsNum());
             LOGGER.log(Level.SEVERE, "Total Services Found: {0}", importer.getTempServicesNum());
             LOGGER.log(Level.SEVERE, "Total Services Updated: {0}", importer.getUpdatedServicesNum());
+        }
+    }
+
+    private static void removeNoise() {
+        long startTime = System.currentTimeMillis();
+        LOGGER.log(Level.SEVERE, "Noise Removal Start");
+
+        HTMLNoiseRemover noiseRemover = new HTMLNoiseRemover();
+
+        try {
+            noiseRemover.removeNoise(HTML_REPOS_ADDRESS,true);
+        } finally {
+            long endTime = System.currentTimeMillis();
+            long totalTime = endTime - startTime;
+            LOGGER.log(Level.SEVERE, "Noise Removal End in {0}ms", totalTime);
+            LOGGER.log(Level.SEVERE, "Total HTML files found : {0}", noiseRemover.getTotalNum());
+            LOGGER.log(Level.SEVERE, "Total HTML files saved : {0}", noiseRemover.getSavedNum());
+            LOGGER.log(Level.SEVERE, "Total Unvalid HTML files : {0}", noiseRemover.getUnvalidNum());
         }
     }
 }
