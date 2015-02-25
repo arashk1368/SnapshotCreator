@@ -116,8 +116,8 @@ public class XMLCreator {
     }
     
     private boolean validateSnapshot(ServiceDescriptionSnapshot snapshot, String withCtxReposAddress, String withoutCtxReposAddress) {
-        File withCtxFile = new File(withCtxReposAddress.concat(snapshot.getFileAddress()));
-        File plainFile = new File(withoutCtxReposAddress.concat(snapshot.getFileAddress()));
+        File withCtxFile = new File(withCtxReposAddress.concat(snapshot.getFileAddress().replace(".html", ".txt")));
+        File plainFile = new File(withoutCtxReposAddress.concat(snapshot.getFileAddress().replace(".html", ".txt")));
         if (!withCtxFile.exists() || withCtxFile.isDirectory()) {
             LOGGER.log(Level.SEVERE, "Snapshot with ID : {0} does not have with context at {1}", new Object[]{snapshot.getId(), withCtxFile.getPath()});
             return false;
