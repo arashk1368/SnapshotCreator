@@ -83,7 +83,7 @@ public class XMLCreator {
 
     private String getXMLElement(ServiceDescriptionSnapshot snapshot, XMLStrategy strategy) {
         StringBuilder sb = new StringBuilder();
-        sb.append("<file id=\"").append(snapshot.getId()).append("\" path=\"").append(snapshot.getFileAddress()).append("\">");
+        sb.append("<file id=\"").append(snapshot.getId()).append("\" path=\"").append(snapshot.getFileAddress().replace(".html", ".txt")).append("\">");
         sb.append("\n");
         sb.append("	<meta>\n"
                 + "		<type></type>\n"
