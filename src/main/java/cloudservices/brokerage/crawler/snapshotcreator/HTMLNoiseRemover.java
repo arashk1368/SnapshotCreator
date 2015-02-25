@@ -42,7 +42,7 @@ public class HTMLNoiseRemover {
             try {
                 LOGGER.log(Level.INFO, "File : {0} found from address : {1}", new Object[]{file.getName(), file.getPath()});
 
-                String text = Jsoup.parse(file, null).text();
+                String text = Jsoup.parse(file, "UTF-8").text();
                 LOGGER.log(Level.FINER, "Text : {0} found from html", text);
 
                 if (keepComments) {
@@ -60,7 +60,7 @@ public class HTMLNoiseRemover {
                 LOGGER.log(Level.FINE, "Writing new file in {0}", newFilePath);
                 FileWriter.appendString(text, newFilePath);
                 savedNum++;
-            } catch (IOException ex) {
+            } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE, "Cannot parse file " + file.getPath(), ex);
                 unvalidNum++;
             }
@@ -96,7 +96,7 @@ public class HTMLNoiseRemover {
     private String getContextComments(File file) {
         String context = "";
         try {
-            BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
+            BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
 
             int counter = 1;
             String line = br.readLine();
