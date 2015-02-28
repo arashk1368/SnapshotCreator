@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.apache.commons.io.FileUtils;
 
 /**
  *
@@ -33,14 +34,14 @@ public class XMLCreator {
         this.snapshotDAO = new ServiceDescriptionSnapshotDAO();
     }
 
-    public void generate(long startingId, long endingId, ServiceDescriptionType type, String xmlAddress, XMLStrategy strategy, String withCtxReposAddress, String withoutCtxReposAddress) throws DAOException, IOException {
+    public void generate(long startingId, long endingId, ServiceDescriptionType type, String xmlAddress, XMLStrategy strategy, String withCtxReposAddress, String withoutCtxReposAddress, String tempAddress) throws DAOException, IOException {
         LOGGER.log(Level.INFO, "Creating XML between: {0} and {1} with Type : {2}", new Object[]{startingId, endingId, type});
         LOGGER.log(Level.INFO, "XML address: {0} and Strategy : {1}", new Object[]{xmlAddress, strategy});
 
         File xml = new File(xmlAddress);
-        if (xml.exists() || xml.isDirectory()) {
-            LOGGER.log(Level.SEVERE, "File is not valid");
-            return;
+        if (xml.exists()) {
+            xml.delete();
+            LOGGER.log(Level.SEVERE, "File removed");
         }
 
         List<ServiceDescriptionSnapshot> snapshots = getSnapshots(startingId, endingId, type, strategy);
@@ -52,7 +53,7 @@ public class XMLCreator {
 
         for (ServiceDescriptionSnapshot snapshot : snapshots) {
             LOGGER.log(Level.INFO, "Writing Snapshot with ID: {0}", snapshot.getId());
-            if (validateSnapshot(snapshot, withCtxReposAddress, withoutCtxReposAddress)) {
+            if (validateSnapshot(snapshot, withCtxReposAddress, withoutCtxReposAddress, tempAddress)) {
 
                 String fileElement = getXMLElement(snapshot, strategy);
                 LOGGER.log(Level.FINE, "Writing {0}", fileElement);
@@ -114,10 +115,11 @@ public class XMLCreator {
         }
         return "";
     }
-    
-    private boolean validateSnapshot(ServiceDescriptionSnapshot snapshot, String withCtxReposAddress, String withoutCtxReposAddress) {
-        File withCtxFile = new File(withCtxReposAddress.concat(snapshot.getFileAddress().replace(".html", ".txt")));
-        File plainFile = new File(withoutCtxReposAddress.concat(snapshot.getFileAddress().replace(".html", ".txt")));
+
+    private boolean validateSnapshot(ServiceDescriptionSnapshot snapshot, String withCtxReposAddress, String withoutCtxReposAddress, String tempAddress) throws IOException {
+        String txtAddress=snapshot.getFileAddress().replace(".html", ".txt");
+        File withCtxFile = new File(withCtxReposAddress.concat(txtAddress));
+        File plainFile = new File(withoutCtxReposAddress.concat(txtAddress));
         if (!withCtxFile.exists() || withCtxFile.isDirectory()) {
             LOGGER.log(Level.SEVERE, "Snapshot with ID : {0} does not have with context at {1}", new Object[]{snapshot.getId(), withCtxFile.getPath()});
             return false;
@@ -126,6 +128,8 @@ public class XMLCreator {
             LOGGER.log(Level.SEVERE, "Snapshot with ID : {0} does not have without context at {1}", new Object[]{snapshot.getId(), plainFile.getPath()});
             return false;
         }
+        FileUtils.copyFile(withCtxFile, new File(tempAddress.concat("/WithContext/").concat(txtAddress)));
+        FileUtils.copyFile(plainFile, new File(tempAddress.concat("/WithoutContext/").concat(txtAddress)));
         return true;
     }
 
@@ -151,5 +155,5 @@ public class XMLCreator {
 
     public void setUnvalidNum(int unvalidNum) {
         this.unvalidNum = unvalidNum;
-    }  
+    }
 }

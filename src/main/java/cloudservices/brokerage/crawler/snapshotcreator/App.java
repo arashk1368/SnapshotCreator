@@ -38,8 +38,8 @@ public class App {
     //        "Mozilla/5.0 (X11; Mageia; Linux x86_64; rv:10.0.9) Gecko/20100101 Firefox/10.0.9"
     };
     private final static long POLITENESS_DELAY = 100; //ms
-    private final static String CTX_REPOS_ADDRESS = "SnapshotRepository/WithContext/WSDLS/";
-    private final static String PLAIN_REPOS_ADDRESS = "SnapshotRepository/WithoutContext/WSDLS/";
+    private final static String CTX_REPOS_ADDRESS = "SnapshotRepository/WithContext/RESTS/";
+    private final static String PLAIN_REPOS_ADDRESS = "SnapshotRepository/WithoutContext/RESTS/";
     private final static long STARTING_SNAPSHOT_ID = -1;
     private final static long STARTING_SERVICE_ID = 0;
     private final static long ENDING_SERVICE_ID = 100000;
@@ -48,20 +48,21 @@ public class App {
 
     private final static long STARTING_SNAPSHOT_ID_XML = 0;
     private final static long ENDING_SNAPSHOT_ID_XML = 1000000;
-    private final static ServiceDescriptionType DESCRIPTION_TYPE_XML = ServiceDescriptionType.WSDL;
-    private final static XMLStrategy XML_STRATEGY = XMLStrategy.CONTEXT_CLASSIFIED;
-    private final static String XML_ADDRESS = "train-WSDLS.xml";
-
-    private final static String HTML_REPOS_ADDRESS = "SnapshotRepository/WithContext/RESTS/";
+    private final static ServiceDescriptionType DESCRIPTION_TYPE_XML = ServiceDescriptionType.REST;
+    private final static XMLStrategy XML_STRATEGY = XMLStrategy.PLAIN_CLASSIFIED;
+    private final static String XML_ADDRESS = "test-RESTS.xml";
+    private final static String TEMP_ADDRESS="test-RESTS/";
+    
+    private final static String HTML_REPOS_ADDRESS = "SnapshotRepository/WithoutContext/RESTS/";
 
     public static void main(String[] args) {
         createLogFile();
         //        createNewDB();
 
 //        createSnapshots();
-//        createXML();
+        createXML();
 //        importSnapshots();
-        removeNoise();
+//        removeNoise();
 
         System.exit(0);
     }
@@ -124,7 +125,7 @@ public class App {
         XMLCreator xmlCreator = new XMLCreator();
 
         try {
-            xmlCreator.generate(STARTING_SNAPSHOT_ID_XML, ENDING_SNAPSHOT_ID_XML, DESCRIPTION_TYPE_XML, XML_ADDRESS, XML_STRATEGY, CTX_REPOS_ADDRESS, PLAIN_REPOS_ADDRESS);
+            xmlCreator.generate(STARTING_SNAPSHOT_ID_XML, ENDING_SNAPSHOT_ID_XML, DESCRIPTION_TYPE_XML, XML_ADDRESS, XML_STRATEGY, CTX_REPOS_ADDRESS, PLAIN_REPOS_ADDRESS,TEMP_ADDRESS);
         } catch (DAOException | IOException ex) {
             LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
         } finally {
@@ -171,7 +172,7 @@ public class App {
         HTMLNoiseRemover noiseRemover = new HTMLNoiseRemover();
 
         try {
-            noiseRemover.removeNoise(HTML_REPOS_ADDRESS,true);
+            noiseRemover.removeNoise(HTML_REPOS_ADDRESS,false);
         } finally {
             long endTime = System.currentTimeMillis();
             long totalTime = endTime - startTime;
