@@ -217,11 +217,7 @@ pip-log.txt
 #Mr Developer
 .mr.developer.cfg
 /target/
-train-RESTS/
-train-WSDLS/
-test-WSDLS/
-test-RESTS/
-test-RESTS.xml
-test-WSDLS.xml
-train-RESTS.xml
-train-WSDLS.xml
+train-*/
+test-*/
+test-*.xml
+train-*.xml
