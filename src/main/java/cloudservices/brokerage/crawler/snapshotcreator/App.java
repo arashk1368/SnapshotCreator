@@ -49,11 +49,13 @@ public class App {
     private final static long STARTING_SNAPSHOT_ID_XML = 0;
     private final static long ENDING_SNAPSHOT_ID_XML = 1000000;
     private final static ServiceDescriptionType DESCRIPTION_TYPE_XML = ServiceDescriptionType.REST;
-    private final static XMLStrategy XML_STRATEGY = XMLStrategy.PLAIN_CLASSIFIED;
-    private final static String XML_ADDRESS = "test-RESTS.xml";
-    private final static String TEMP_ADDRESS="test-RESTS/";
-    
-    private final static String HTML_REPOS_ADDRESS = "SnapshotRepository/WithoutContext/RESTS/";
+    private final static XMLStrategy XML_STRATEGY = XMLStrategy.CONTEXT_CLASSIFIED;
+    private final static String XML_ADDRESS = "train-RESTS.xml";
+    private final static String TEMP_ADDRESS = "train-RESTS/";
+    private final static boolean CREATE_SEPARATE = false;
+
+    private final static String HTML_REPOS_ADDRESS = "SnapshotRepository/WithContext/RESTS/";
+    private final static boolean KEEP_COMMENTS = true;
 
     public static void main(String[] args) {
         createLogFile();
@@ -125,7 +127,7 @@ public class App {
         XMLCreator xmlCreator = new XMLCreator();
 
         try {
-            xmlCreator.generate(STARTING_SNAPSHOT_ID_XML, ENDING_SNAPSHOT_ID_XML, DESCRIPTION_TYPE_XML, XML_ADDRESS, XML_STRATEGY, CTX_REPOS_ADDRESS, PLAIN_REPOS_ADDRESS,TEMP_ADDRESS);
+            xmlCreator.generate(STARTING_SNAPSHOT_ID_XML, ENDING_SNAPSHOT_ID_XML, DESCRIPTION_TYPE_XML, XML_ADDRESS, XML_STRATEGY, CTX_REPOS_ADDRESS, PLAIN_REPOS_ADDRESS, TEMP_ADDRESS, CREATE_SEPARATE);
         } catch (DAOException | IOException ex) {
             LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
         } finally {
@@ -172,7 +174,7 @@ public class App {
         HTMLNoiseRemover noiseRemover = new HTMLNoiseRemover();
 
         try {
-            noiseRemover.removeNoise(HTML_REPOS_ADDRESS,false);
+            noiseRemover.removeNoise(HTML_REPOS_ADDRESS, KEEP_COMMENTS);
         } finally {
             long endTime = System.currentTimeMillis();
             long totalTime = endTime - startTime;

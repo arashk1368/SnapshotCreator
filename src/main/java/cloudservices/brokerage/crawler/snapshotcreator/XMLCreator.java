@@ -9,9 +9,11 @@ import cloudservices.brokerage.crawler.crawlingcommons.model.DAO.DAOException;
 import cloudservices.brokerage.crawler.crawlingcommons.model.DAO.v3.ServiceDescriptionSnapshotDAO;
 import cloudservices.brokerage.crawler.crawlingcommons.model.entities.v3.ServiceDescriptionSnapshot;
 import cloudservices.brokerage.crawler.crawlingcommons.model.enums.v3.ServiceDescriptionType;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -34,7 +36,7 @@ public class XMLCreator {
         this.snapshotDAO = new ServiceDescriptionSnapshotDAO();
     }
 
-    public void generate(long startingId, long endingId, ServiceDescriptionType type, String xmlAddress, XMLStrategy strategy, String withCtxReposAddress, String withoutCtxReposAddress, String tempAddress) throws DAOException, IOException {
+    public void generate(long startingId, long endingId, ServiceDescriptionType type, String xmlAddress, XMLStrategy strategy, String withCtxReposAddress, String withoutCtxReposAddress, String tempAddress, boolean createSeparate) throws DAOException, IOException {
         LOGGER.log(Level.INFO, "Creating XML between: {0} and {1} with Type : {2}", new Object[]{startingId, endingId, type});
         LOGGER.log(Level.INFO, "XML address: {0} and Strategy : {1}", new Object[]{xmlAddress, strategy});
 
@@ -53,7 +55,7 @@ public class XMLCreator {
 
         for (ServiceDescriptionSnapshot snapshot : snapshots) {
             LOGGER.log(Level.INFO, "Writing Snapshot with ID: {0}", snapshot.getId());
-            if (validateSnapshot(snapshot, withCtxReposAddress, withoutCtxReposAddress, tempAddress)) {
+            if (validateSnapshot(snapshot, withCtxReposAddress, withoutCtxReposAddress, tempAddress, strategy, createSeparate)) {
 
                 String fileElement = getXMLElement(snapshot, strategy);
                 LOGGER.log(Level.FINE, "Writing {0}", fileElement);
@@ -116,10 +118,14 @@ public class XMLCreator {
         return "";
     }
 
-    private boolean validateSnapshot(ServiceDescriptionSnapshot snapshot, String withCtxReposAddress, String withoutCtxReposAddress, String tempAddress) throws IOException {
-        String txtAddress=snapshot.getFileAddress().replace(".html", ".txt");
-        File withCtxFile = new File(withCtxReposAddress.concat(txtAddress));
-        File plainFile = new File(withoutCtxReposAddress.concat(txtAddress));
+    private boolean validateSnapshot(ServiceDescriptionSnapshot snapshot, String withCtxReposAddress, String withoutCtxReposAddress, String tempAddress, XMLStrategy strategy, boolean createSeparate) throws IOException {
+        String fileAddress = snapshot.getFileAddress();
+
+        if (snapshot.getType() == ServiceDescriptionType.REST) {
+            fileAddress = fileAddress.replace(".html", ".txt");
+        }
+        File withCtxFile = new File(withCtxReposAddress.concat(fileAddress));
+        File plainFile = new File(withoutCtxReposAddress.concat(fileAddress));
         if (!withCtxFile.exists() || withCtxFile.isDirectory()) {
             LOGGER.log(Level.SEVERE, "Snapshot with ID : {0} does not have with context at {1}", new Object[]{snapshot.getId(), withCtxFile.getPath()});
             return false;
@@ -128,9 +134,107 @@ public class XMLCreator {
             LOGGER.log(Level.SEVERE, "Snapshot with ID : {0} does not have without context at {1}", new Object[]{snapshot.getId(), plainFile.getPath()});
             return false;
         }
-        FileUtils.copyFile(withCtxFile, new File(tempAddress.concat("/WithContext/").concat(txtAddress)));
-        FileUtils.copyFile(plainFile, new File(tempAddress.concat("/WithoutContext/").concat(txtAddress)));
+
+        String ctxTempDirAddress = tempAddress.concat("/WithContext/");
+        if (createSeparate) {
+            ctxTempDirAddress = ctxTempDirAddress.concat(getCVE(snapshot, strategy) + "/");
+        }
+        String tempCtxFileAddress = ctxTempDirAddress.concat(fileAddress);
+
+        String plainTempDirAddress = tempAddress.concat("/WithoutContext/");
+        if (createSeparate) {
+            plainTempDirAddress = plainTempDirAddress.concat(getCVE(snapshot, strategy) + "/");
+        }
+
+        String tempPlainFileAddress = plainTempDirAddress.concat(fileAddress);
+
+        FileUtils.copyFile(withCtxFile, new File(tempCtxFileAddress));
+        FileUtils.copyFile(plainFile, new File(tempPlainFileAddress));
+
+        if (snapshot.getType() == ServiceDescriptionType.REST) {
+            fileAddress = fileAddress.replace(".txt", ".html");
+            withCtxFile = new File(withCtxReposAddress.concat(fileAddress));
+            plainFile = new File(withoutCtxReposAddress.concat(fileAddress));
+            if (!withCtxFile.exists() || withCtxFile.isDirectory()) {
+                LOGGER.log(Level.SEVERE, "Snapshot with ID : {0} does not have with context at {1}", new Object[]{snapshot.getId(), withCtxFile.getPath()});
+                return false;
+            }
+            if (!plainFile.exists() || plainFile.isDirectory()) {
+                LOGGER.log(Level.SEVERE, "Snapshot with ID : {0} does not have without context at {1}", new Object[]{snapshot.getId(), plainFile.getPath()});
+                return false;
+            }
+
+            ctxTempDirAddress = tempAddress.concat("/WithContext/");
+            if (createSeparate) {
+                ctxTempDirAddress = ctxTempDirAddress.concat(getCVE(snapshot, strategy) + "/");
+            }
+            tempCtxFileAddress = ctxTempDirAddress.concat(fileAddress);
+
+            plainTempDirAddress = tempAddress.concat("/WithoutContext/");
+            if (createSeparate) {
+                plainTempDirAddress = plainTempDirAddress.concat(getCVE(snapshot, strategy) + "/");
+            }
+
+            tempPlainFileAddress = plainTempDirAddress.concat(fileAddress);
+
+            FileUtils.copyFile(withCtxFile, new File(tempCtxFileAddress));
+            FileUtils.copyFile(plainFile, new File(tempPlainFileAddress));
+        }
+
+        createCtxFile(withCtxReposAddress, snapshot, ctxTempDirAddress);
         return true;
+    }
+
+    private void createCtxFile(String withCtxReposAddress, ServiceDescriptionSnapshot snapshot, String tempDirAddress) throws IOException {
+        String context = getContextComments(new File(withCtxReposAddress.concat(snapshot.getFileAddress())));
+        LOGGER.log(Level.FINER, "Context comments : {0} found", context);
+        String newFilePath = null;
+        switch (snapshot.getType()) {
+            case REST:
+                newFilePath = tempDirAddress.concat(snapshot.getFileAddress().replace(".html", ".ctx"));
+                break;
+            case WADL:
+                newFilePath = tempDirAddress.concat(snapshot.getFileAddress().replace(".wadl", ".ctx"));
+                break;
+            case WSDL:
+                newFilePath = tempDirAddress.concat(snapshot.getFileAddress().replace(".wsdl", ".ctx"));
+                break;
+        }
+
+        File newFile = new File(newFilePath);
+        if (newFile.exists()) {
+            LOGGER.log(Level.INFO, "File already exists in {0}", newFilePath);
+            newFile.delete();
+        }
+
+        LOGGER.log(Level.FINE, "Writing new file in {0}", newFilePath);
+        FileWriter.appendString(context, newFilePath);
+    }
+
+    private String getContextComments(File file) {
+        String context = "";
+        try {
+            BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+
+            int counter = 1;
+            String line = br.readLine();
+            if (line == null || line.compareTo("<!--") != 0) {
+                LOGGER.log(Level.SEVERE, "File {0} is not starting with comments!", file.getPath());
+            } else {
+                while ((line = br.readLine()) != null) {
+                    context = context.concat(line).concat("\n");
+                    counter++;
+                    if (counter == 5) {
+                        break;
+                    }
+                }
+            }
+            br.close();
+
+        } catch (IOException ex) {
+            LOGGER.log(Level.SEVERE, "File " + file.getPath() + " does not have well-formed context comments", ex);
+        }
+        return context;
     }
 
     public int getTotalNum() {
