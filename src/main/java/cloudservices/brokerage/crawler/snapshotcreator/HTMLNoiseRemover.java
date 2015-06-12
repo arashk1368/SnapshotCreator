@@ -104,7 +104,7 @@ public class HTMLNoiseRemover {
                 LOGGER.log(Level.SEVERE, "File {0} is not starting with comments!", file.getPath());
             } else {
                 while ((line = br.readLine()) != null) {
-                    context = context.concat(line);
+                    context = context.concat(line).concat("\n");
                     counter++;
                     if (counter == 5) {
                         break;
