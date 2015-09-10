@@ -121,7 +121,7 @@ public class App {
         LOGGER.log(Level.SEVERE, "Creating XML Start");
 
         Configuration configuration = new Configuration();
-        configuration.configure("v3hibernate.cfg.xml");
+        configuration.configure("v4hibernate.cfg.xml");
         BaseDAO.openSession(configuration);
 
         XMLCreator xmlCreator = new XMLCreator();
