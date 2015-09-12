@@ -7,6 +7,7 @@ package cloudservices.brokerage.crawler.snapshotcreator;
 import cloudservices.brokerage.commons.utils.file_utils.FileWriter;
 import cloudservices.brokerage.crawler.crawlingcommons.model.DAO.DAOException;
 import cloudservices.brokerage.crawler.crawlingcommons.model.DAO.v3.ServiceDescriptionSnapshotDAO;
+import cloudservices.brokerage.crawler.crawlingcommons.model.entities.v3.Category;
 import cloudservices.brokerage.crawler.crawlingcommons.model.entities.v3.ServiceDescriptionSnapshot;
 import cloudservices.brokerage.crawler.crawlingcommons.model.enums.v3.ServiceDescriptionType;
 import java.io.BufferedReader;
@@ -15,7 +16,10 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.io.FileUtils;
@@ -70,6 +74,67 @@ public class XMLCreator {
         FileWriter.appendString("</dataset>", xmlAddress);
     }
 
+    public void generate(ServiceDescriptionType type, XMLStrategy strategy, double testingPercentage, String withCtxReposAddress, String withoutCtxReposAddress, String tempAddress, boolean createSeparate) throws IOException, DAOException {
+        LOGGER.log(Level.INFO, "Creating XML for Type : {0}, Strategy : {1}, and Testing Percentage: {2}", new Object[]{type, strategy, testingPercentage});
+
+        String trainXMLAddress = "train-" + type.toString() + "S.xml";
+        String testXMLAddress = "test-" + type.toString() + "S.xml";
+        File trainXML = new File(trainXMLAddress);
+        File testXML = new File(testXMLAddress);
+        if (trainXML.exists()) {
+            trainXML.delete();
+            LOGGER.log(Level.SEVERE, "Train File removed");
+        }
+        if (testXML.exists()) {
+            testXML.delete();
+            LOGGER.log(Level.SEVERE, "Test File removed");
+        }
+
+        List<ServiceDescriptionSnapshot> snapshots = getSnapshots(0, 1000000, type, strategy);
+        LOGGER.log(Level.INFO, "{0} Found", snapshots.size());
+        totalNum = snapshots.size();
+
+        FileWriter.writeInputStream(new FileInputStream("description.xml"), trainXML);
+        FileWriter.writeInputStream(new FileInputStream("description.xml"), testXML);
+        LOGGER.log(Level.INFO, "description.xml successfully added to files");
+
+        HashMap<Category, List<ServiceDescriptionSnapshot>> trainingSet = new HashMap<>();
+        HashMap<Category, List<ServiceDescriptionSnapshot>> testingSet = new HashMap<>();
+        distributeSnapshots(snapshots, strategy, testingPercentage, trainingSet, testingSet);
+
+        for (Map.Entry<Category, List<ServiceDescriptionSnapshot>> entrySet : trainingSet.entrySet()) {
+            Category category = entrySet.getKey();
+            List<ServiceDescriptionSnapshot> cluster = entrySet.getValue();
+            LOGGER.log(Level.INFO, "Writing training set for category: {0}", category.getName());
+            WriteSnapshots(cluster, withCtxReposAddress, withoutCtxReposAddress, tempAddress, strategy, createSeparate, trainXMLAddress);
+        }
+
+        for (Map.Entry<Category, List<ServiceDescriptionSnapshot>> entrySet : testingSet.entrySet()) {
+            Category category = entrySet.getKey();
+            List<ServiceDescriptionSnapshot> cluster = entrySet.getValue();
+            LOGGER.log(Level.INFO, "Writing testing set for category: {0}", category.getName());
+            WriteSnapshots(cluster, withCtxReposAddress, withoutCtxReposAddress, tempAddress, strategy, createSeparate, testXMLAddress);
+        }
+
+        FileWriter.appendString("</dataset>", trainXMLAddress);
+        FileWriter.appendString("</dataset>", testXMLAddress);
+    }
+
+    private void WriteSnapshots(List<ServiceDescriptionSnapshot> snapshots, String withCtxReposAddress, String withoutCtxReposAddress, String tempAddress, XMLStrategy strategy, boolean createSeparate, String xmlFileAddress) throws IOException {
+        for (ServiceDescriptionSnapshot snapshot : snapshots) {
+            LOGGER.log(Level.INFO, "Writing Snapshot with ID: {0}", snapshot.getId());
+            if (validateSnapshot(snapshot, withCtxReposAddress, withoutCtxReposAddress, tempAddress, strategy, createSeparate)) {
+                String fileElement = getXMLElement(snapshot, strategy);
+                LOGGER.log(Level.FINE, "Writing {0}", fileElement);
+                FileWriter.appendString(fileElement, xmlFileAddress);
+                savedNum++;
+            } else {
+                LOGGER.log(Level.SEVERE, "Snapshot is invalid!");
+                unvalidNum++;
+            }
+        }
+    }
+
     private List<ServiceDescriptionSnapshot> getSnapshots(long startingId, long endingId, ServiceDescriptionType type, XMLStrategy strategy) throws DAOException {
         switch (strategy) {
             case ALL:
@@ -109,13 +174,17 @@ public class XMLCreator {
     }
 
     private String getCVE(ServiceDescriptionSnapshot snapshot, XMLStrategy strategy) {
+        return getCategory(snapshot, strategy).getName();
+    }
+
+    private Category getCategory(ServiceDescriptionSnapshot snapshot, XMLStrategy strategy) {
         switch (strategy) {
             case CONTEXT_CLASSIFIED:
-                return snapshot.getPrimaryCategoryWithCtx().getName();
+                return snapshot.getPrimaryCategoryWithCtx();
             case PLAIN_CLASSIFIED:
-                return snapshot.getPrimaryCategoryPlain().getName();
+                return snapshot.getPrimaryCategoryPlain();
         }
-        return "";
+        return null;
     }
 
     private boolean validateSnapshot(ServiceDescriptionSnapshot snapshot, String withCtxReposAddress, String withoutCtxReposAddress, String tempAddress, XMLStrategy strategy, boolean createSeparate) throws IOException {
@@ -124,6 +193,7 @@ public class XMLCreator {
         if (snapshot.getType() == ServiceDescriptionType.REST) {
             fileAddress = fileAddress.replace(".html", ".txt");
         }
+
         File withCtxFile = new File(withCtxReposAddress.concat(fileAddress));
         File plainFile = new File(withoutCtxReposAddress.concat(fileAddress));
         if (!withCtxFile.exists() || withCtxFile.isDirectory()) {
@@ -139,6 +209,21 @@ public class XMLCreator {
         if (createSeparate) {
             ctxTempDirAddress = ctxTempDirAddress.concat(getCVE(snapshot, strategy) + "/");
         }
+
+        String typeAddress = null;
+        switch (snapshot.getType()) {
+            case REST:
+                typeAddress = "RESTS";
+                break;
+            case WSDL:
+                typeAddress = "WSDLS";
+                break;
+            case WADL:
+                typeAddress = "WADLS";
+                break;
+        }
+
+        ctxTempDirAddress = ctxTempDirAddress.concat(typeAddress + "/");
         String tempCtxFileAddress = ctxTempDirAddress.concat(fileAddress);
 
         String plainTempDirAddress = tempAddress.concat("/WithoutContext/");
@@ -146,6 +231,7 @@ public class XMLCreator {
             plainTempDirAddress = plainTempDirAddress.concat(getCVE(snapshot, strategy) + "/");
         }
 
+        plainTempDirAddress = plainTempDirAddress.concat(typeAddress + "/");
         String tempPlainFileAddress = plainTempDirAddress.concat(fileAddress);
 
         FileUtils.copyFile(withCtxFile, new File(tempCtxFileAddress));
@@ -164,17 +250,7 @@ public class XMLCreator {
                 return false;
             }
 
-            ctxTempDirAddress = tempAddress.concat("/WithContext/");
-            if (createSeparate) {
-                ctxTempDirAddress = ctxTempDirAddress.concat(getCVE(snapshot, strategy) + "/");
-            }
             tempCtxFileAddress = ctxTempDirAddress.concat(fileAddress);
-
-            plainTempDirAddress = tempAddress.concat("/WithoutContext/");
-            if (createSeparate) {
-                plainTempDirAddress = plainTempDirAddress.concat(getCVE(snapshot, strategy) + "/");
-            }
-
             tempPlainFileAddress = plainTempDirAddress.concat(fileAddress);
 
             FileUtils.copyFile(withCtxFile, new File(tempCtxFileAddress));
@@ -259,5 +335,32 @@ public class XMLCreator {
 
     public void setUnvalidNum(int unvalidNum) {
         this.unvalidNum = unvalidNum;
+    }
+
+    private void distributeSnapshots(List<ServiceDescriptionSnapshot> snapshots, XMLStrategy strategy, double testingPercentage, HashMap<Category, List<ServiceDescriptionSnapshot>> trainingSet, HashMap<Category, List<ServiceDescriptionSnapshot>> testingSet) {
+        HashMap<Category, List<ServiceDescriptionSnapshot>> all = new HashMap<>();
+        for (ServiceDescriptionSnapshot snapshot : snapshots) {
+            Category category = getCategory(snapshot, strategy);
+            if (!all.containsKey(category)) {
+                all.put(category, new ArrayList<ServiceDescriptionSnapshot>());
+            }
+
+            all.get(category).add(snapshot);
+        }
+
+        int testingSize = (int) ((snapshots.size() / all.keySet().size()) * testingPercentage);
+
+        for (Map.Entry<Category, List<ServiceDescriptionSnapshot>> entrySet : all.entrySet()) {
+            Category category = entrySet.getKey();
+            List<ServiceDescriptionSnapshot> cluster = entrySet.getValue();
+            List<ServiceDescriptionSnapshot> testingCluster = new ArrayList<>();
+            for (int i = 0; i < testingSize; i++) {
+                int random = ThreadLocalRandom.current().nextInt(0, cluster.size());
+                ServiceDescriptionSnapshot testing = cluster.remove(random);
+                testingCluster.add(testing);
+            }
+            testingSet.put(category, testingCluster);
+            trainingSet.put(category, cluster);
+        }
     }
 }
