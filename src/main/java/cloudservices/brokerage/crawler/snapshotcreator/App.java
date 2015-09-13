@@ -52,7 +52,10 @@ public class App {
     private final static XMLStrategy XML_STRATEGY = XMLStrategy.CONTEXT_CLASSIFIED;
     private final static String XML_ADDRESS = "train-WSDLS.xml";
     private final static String TEMP_ADDRESS = "RESTS/";
+    private final static String TRAIN_FOLDER_PREFIX = "WithContext/RESTS/";
+    private final static String TEST_FOLDER_PREFIX = "WithoutContext/RESTS/";
     private final static boolean CREATE_SEPARATE = false;
+    private final static boolean COPY = false;
     private final static double TESTING_PERCENTAGE = 33d / 100d;
 
     private final static String HTML_REPOS_ADDRESS = "SnapshotRepository/WithContext/RESTS/";
@@ -128,8 +131,9 @@ public class App {
         XMLCreator xmlCreator = new XMLCreator();
 
         try {
-//            xmlCreator.generate(STARTING_SNAPSHOT_ID_XML, ENDING_SNAPSHOT_ID_XML, DESCRIPTION_TYPE_XML, XML_ADDRESS, XML_STRATEGY, CTX_REPOS_ADDRESS, PLAIN_REPOS_ADDRESS, TEMP_ADDRESS, CREATE_SEPARATE);
-            xmlCreator.generate(DESCRIPTION_TYPE_XML, XML_STRATEGY, TESTING_PERCENTAGE, CTX_REPOS_ADDRESS, PLAIN_REPOS_ADDRESS, TEMP_ADDRESS, CREATE_SEPARATE);
+//            xmlCreator.generate(STARTING_SNAPSHOT_ID_XML, ENDING_SNAPSHOT_ID_XML, DESCRIPTION_TYPE_XML, XML_ADDRESS, XML_STRATEGY, CTX_REPOS_ADDRESS, PLAIN_REPOS_ADDRESS,TRAIN_FOLDER_PREFIX,TEST_FOLDER_PREFIX,COPY, TEMP_ADDRESS, CREATE_SEPARATE);
+//            xmlCreator.generate(DESCRIPTION_TYPE_XML, XML_STRATEGY, TESTING_PERCENTAGE, CTX_REPOS_ADDRESS, PLAIN_REPOS_ADDRESS,TRAIN_FOLDER_PREFIX,TEST_FOLDER_PREFIX,COPY, TEMP_ADDRESS, CREATE_SEPARATE);
+            xmlCreator.generate10Fold(DESCRIPTION_TYPE_XML, XML_STRATEGY, CTX_REPOS_ADDRESS, PLAIN_REPOS_ADDRESS, TRAIN_FOLDER_PREFIX, TEST_FOLDER_PREFIX, COPY, TEMP_ADDRESS, CREATE_SEPARATE);
         } catch (DAOException | IOException ex) {
             LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
         } finally {
