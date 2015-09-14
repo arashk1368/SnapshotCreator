@@ -40,7 +40,7 @@ public class XMLCreator {
         this.snapshotDAO = new ServiceDescriptionSnapshotDAO();
     }
 
-    public void generate(long startingId, long endingId, ServiceDescriptionType type, String xmlAddress, XMLStrategy strategy, String withCtxReposAddress, String withoutCtxReposAddress, String trainFolderPrefix, String testFolderPrefix, boolean copy, String tempAddress, boolean createSeparate) throws DAOException, IOException {
+    public void generate(long startingId, long endingId, ServiceDescriptionType type, String xmlAddress, XMLStrategy strategy, String withCtxReposAddress, String withoutCtxReposAddress, String folderPrefix, boolean copy, String tempAddress, boolean createSeparate) throws DAOException, IOException {
         LOGGER.log(Level.INFO, "Creating XML between: {0} and {1} with Type : {2}", new Object[]{startingId, endingId, type});
         LOGGER.log(Level.INFO, "XML address: {0} and Strategy : {1}", new Object[]{xmlAddress, strategy});
 
@@ -57,7 +57,7 @@ public class XMLCreator {
         FileWriter.writeInputStream(new FileInputStream("description.xml"), xml);
         LOGGER.log(Level.INFO, "description.xml successfully added to file");
 
-        WriteSnapshots(snapshots, withCtxReposAddress, withoutCtxReposAddress, trainFolderPrefix, tempAddress, strategy, copy, createSeparate, xmlAddress);
+        WriteSnapshots(snapshots, withCtxReposAddress, withoutCtxReposAddress, folderPrefix, tempAddress, strategy, copy, createSeparate, xmlAddress);
 
         FileWriter.appendString("</dataset>", xmlAddress);
     }
@@ -214,7 +214,12 @@ public class XMLCreator {
     }
 
     private String getCVE(ServiceDescriptionSnapshot snapshot, XMLStrategy strategy) {
-        return getCategory(snapshot, strategy).getName();
+        Category category = getCategory(snapshot, strategy);
+        if (category == null) {
+            return "";
+        } else {
+            return category.getName();
+        }
     }
 
     private Category getCategory(ServiceDescriptionSnapshot snapshot, XMLStrategy strategy) {
