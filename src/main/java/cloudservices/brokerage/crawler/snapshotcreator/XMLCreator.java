@@ -245,8 +245,19 @@ public class XMLCreator {
             LOGGER.log(Level.SEVERE, "Snapshot with ID : {0} does not have with context at {1}", new Object[]{snapshot.getId(), withCtxFile.getPath()});
             return false;
         }
+
+        if (withCtxFile.length() < 100) {
+            LOGGER.log(Level.SEVERE, "Snapshot with ID : {0} with context snapshot at {1} is too small", new Object[]{snapshot.getId(), withCtxFile.getPath()});
+            return false;
+        }
+
         if (!plainFile.exists() || plainFile.isDirectory()) {
             LOGGER.log(Level.SEVERE, "Snapshot with ID : {0} does not have without context at {1}", new Object[]{snapshot.getId(), plainFile.getPath()});
+            return false;
+        }
+
+        if (plainFile.length() < 100) {
+            LOGGER.log(Level.SEVERE, "Snapshot with ID : {0} without context snapshot at {1} is too small", new Object[]{snapshot.getId(), withCtxFile.getPath()});
             return false;
         }
 
@@ -280,8 +291,19 @@ public class XMLCreator {
             LOGGER.log(Level.SEVERE, "Snapshot with ID : {0} does not have with context at {1}", new Object[]{snapshot.getId(), withCtxFile.getPath()});
             return false;
         }
+
+        if (withCtxFile.length() < 100) {
+            LOGGER.log(Level.SEVERE, "Snapshot with ID : {0} with context snapshot at {1} is too small", new Object[]{snapshot.getId(), withCtxFile.getPath()});
+            return false;
+        }
+
         if (!plainFile.exists() || plainFile.isDirectory()) {
             LOGGER.log(Level.SEVERE, "Snapshot with ID : {0} does not have without context at {1}", new Object[]{snapshot.getId(), plainFile.getPath()});
+            return false;
+        }
+
+        if (plainFile.length() < 100) {
+            LOGGER.log(Level.SEVERE, "Snapshot with ID : {0} without context snapshot at {1} is too small", new Object[]{snapshot.getId(), withCtxFile.getPath()});
             return false;
         }
 
